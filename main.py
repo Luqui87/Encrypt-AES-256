@@ -1,64 +1,70 @@
-#!/usr/bin/env python3
-import sys
+# -*- encoding: utf-8 -*-
+#!/usr/bin/env python3}
+
 import argparse
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-import os
-
+from Crypto.Protocol.KDF import scrypt
+from Crypto.Hash import SHA3_512
 from Crypto.Cipher import AES
 
-def generate_key():
+
+def encrypt(filepath, outfile, password):
+
+    salt = get_random_bytes(32)
     
-    key = get_random_bytes(32)
+    key = scrypt(password, salt, 32, N=2**20, r=8, p=1 )
 
-    file_out = open("./my_key.bin", "wb")
-    file_out.write(key)
-    file_out.close()
+    hashed_pwd = SHA3_512.new(data=password.encode("utf-8"))
+    hashed_pwd.update(salt)
+    hashed_pwd = hashed_pwd.digest()
 
+    cipher = AES.new(key, AES.MODE_CFB)
 
-def get_key():
-    with open("./my_key.bin", "rb") as k:
-        key = k.read()
-        k.close
-
-    return key
-
-def encrypt(filename):
-
-    if not (os.path.isfile("./my_key.bin")):
-        generate_key()
-
-    key = get_key()
-
-    with open(filename, 'rb') as f:
+    with open(filepath, 'rb') as f:
         file = f.read()
         f.close()
 
-    cipher = AES.new(key, AES.MODE_CBC)
-    ciphered_data = cipher.encrypt(pad(file, AES.block_size))
+    file_out = open(outfile + ".bin", "wb")
+    file_out.write(salt) # 32 bytes
+    file_out.write(cipher.iv) # 16 bytes
+    file_out.write(hashed_pwd) # 64 bytes
 
-    file_out = open("./encrypted.bin", "wb")
-    file_out.write(cipher.iv)
+    ciphered_data = cipher.encrypt(file)
+
     file_out.write(ciphered_data)
     file_out.close()
 
 
 
-def decrypt(filename):
+def decrypt(filepath, outfile, password):
 
-    file_in = open(filename, 'rb')
-    iv = file_in.read(16)
-    ciphered_data = file_in.read()
-    file_in.close()
+    input_file = open(filepath, "rb")
 
-    key = get_key()
-    cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-    original_data = unpad (cipher.decrypt(ciphered_data), AES.block_size)
+    byest_temp = input_file.read(112)
+    hashed_pwd = byest_temp[48:112]
+    salt = byest_temp[:32]
+    iv = byest_temp[32:48]
 
-    original_file = open("./decrypted.bin", "wb")
-    original_file.write(original_data)
-    original_file.close
+    file_pwd = SHA3_512.new(data=password.encode("utf-8"))
+    file_pwd.update(salt)
+    file_pwd = file_pwd.digest()
+
+    if not file_pwd == hashed_pwd :
+        raise Exception("Contraseña incorrecta")
+
+    key = scrypt(password, salt, 32, N=2**20, r=8, p=1 )
+
+    cipher_data = input_file.read()
+    output_file = open(outfile, "wb")
+
+    cipher = AES.new(key, AES.MODE_CFB, iv=iv)
+
+    original_data = cipher.decrypt(cipher_data)
+
+    output_file.write(original_data)
+    output_file.close()
+
 
 
 if __name__ == '__main__':
@@ -66,14 +72,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Encriptar archivo en AES-256")
     
 
-    parser.add_argument('filename', help="un archivo para encriptar")
+    parser.add_argument('filepath', help="Un archivo para encriptar")
+    parser.add_argument('outfile', help='Nombre del archivo encriptado')
+    parser.add_argument('password', help="Contraseña para encriptar el archivo")
     parser.add_argument("-e", "--encrypt", action="store_true", default=False)
     parser.add_argument("-d", "--decrypt", action="store_true", default=False)
 
     args = parser.parse_args()
 
     if (args.encrypt):
-        encrypt(args.filename)
+        encrypt(args.filepath, args.outfile, args.password)
 
     elif (args.decrypt):
-        decrypt(args.filename)
+        decrypt(args.filepath, args.outfile, args.password)
