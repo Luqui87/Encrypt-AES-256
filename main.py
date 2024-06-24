@@ -36,21 +36,25 @@ def encrypt(filepath, outfile, password):
     file_out.close()
 
 
+def check_password(hashpwd, password, salt):
+    new_hash = SHA3_512.new(data=password.encode("utf-8"))
+    new_hash.update(salt)
+    new_hash = new_hash.digest()
+
+    return new_hash == hashpwd
+
 
 def decrypt(filepath, outfile, password):
 
     input_file = open(filepath, "rb")
 
-    byest_temp = input_file.read(112)
-    hashed_pwd = byest_temp[48:112]
-    salt = byest_temp[:32]
-    iv = byest_temp[32:48]
+    bytes_temp = input_file.read(112)
+    hashed_pwd = bytes_temp[48:112]
+    salt = bytes_temp[:32]
+    iv = bytes_temp[32:48]
 
-    file_pwd = SHA3_512.new(data=password.encode("utf-8"))
-    file_pwd.update(salt)
-    file_pwd = file_pwd.digest()
 
-    if not file_pwd == hashed_pwd :
+    if not check_password(hashed_pwd, password, salt) :
         raise Exception("Contraseña incorrecta")
 
     key = scrypt(password, salt, 32, N=2**20, r=8, p=1 )
