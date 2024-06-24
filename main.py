@@ -72,16 +72,21 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Encriptar archivo en AES-256")
     
 
-    parser.add_argument('filepath', help="Un archivo para encriptar")
-    parser.add_argument('outfile', help='Nombre del archivo encriptado')
-    parser.add_argument('password', help="Contraseña para encriptar el archivo")
-    parser.add_argument("-e", "--encrypt", action="store_true", default=False)
-    parser.add_argument("-d", "--decrypt", action="store_true", default=False)
+    # parser.add_argument('filepath', help="Un archivo para encriptar")
+    # parser.add_argument('outfile', help='Nombre del archivo encriptado')
+    # parser.add_argument('password', help="Contraseña para encriptar el archivo")
+    # parser.add_argument("-e", "--encrypt", action="store_true", default=False)
+    # parser.add_argument("-d", "--decrypt", action="store_true", default=False)
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    if (args.encrypt):
-        encrypt(args.filepath, args.outfile, args.password)
+    mode = input("Ingresar mode [E/D]: ")
+    file_path = input("Ingresar dirección del archivo de entrada: ")
+    outfile = input("Ingresar el nombre del archivo de salida: ")
+    password = input("Ingresar contraseña: ")
 
-    elif (args.decrypt):
-        decrypt(args.filepath, args.outfile, args.password)
+    if (mode == "E"):
+        encrypt(file_path, outfile, password)
+
+    elif (mode == "D"):
+        decrypt(file_path, outfile, password)
